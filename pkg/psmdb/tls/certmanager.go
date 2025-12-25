@@ -193,6 +193,27 @@ func (c *certManagerController) ApplyCertificate(ctx context.Context, cr *api.Pe
 		isCA = true
 	}
 
+	secretAnnotations := make(map[string]string)
+	secretLabels := make(map[string]string)
+	additionalOutputFormats := []cm.CertificateAdditionalOutputFormat{}
+	if !internal {
+		for _, replset := range cr.Spec.Replsets {
+			if !replset.NonVoting.Enabled {
+				// using labels and annotations from non-voting members to avoid updating CRD
+				if replset.NonVoting.Annotations != nil {
+					maps.Copy(secretAnnotations, replset.NonVoting.Annotations)
+				}
+				if replset.NonVoting.Labels != nil {
+					maps.Copy(secretLabels, replset.NonVoting.Labels)
+				}
+			}
+		}
+		// add CombinedPEM output format to be used directly by clients
+		additionalOutputFormats = append(additionalOutputFormats, cm.CertificateAdditionalOutputFormat{
+			Type: "CombinedPEM",
+		})
+	}
+
 	certificate := &cm.Certificate{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      certificateName(cr, internal),
@@ -212,6 +233,11 @@ func (c *certManagerController) ApplyCertificate(ctx context.Context, cr *api.Pe
 				Name:  issuerName(cr),
 				Kind:  issuerKind,
 				Group: issuerGroup,
+			},
+			AdditionalOutputFormats: additionalOutputFormats,
+			SecretTemplate: &cm.CertificateSecretTemplate{
+				Annotations: secretAnnotations,
+				Labels:      secretLabels,
 			},
 		},
 	}
