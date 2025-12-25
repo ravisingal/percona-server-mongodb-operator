@@ -194,6 +194,21 @@ func getShardingSans(cr *api.PerconaServerMongoDB) []string {
 	return sans
 }
 
+func GetSplitHorizonsSans(cr *api.PerconaServerMongoDB) []string {
+	sans := []string{}
+	for _, replset := range cr.Spec.Replsets {
+		if replset.Horizons != nil {
+			for _, horizon := range replset.Horizons {
+				for _, host := range horizon {
+					sans = append(sans, host)
+				}
+			}
+		}
+	}
+	sort.Strings(sans)
+	return sans
+}
+
 func GetCertificateSans(cr *api.PerconaServerMongoDB) []string {
 	sans := []string{"localhost"}
 	for _, replset := range cr.Spec.Replsets {
@@ -213,6 +228,7 @@ func GetCertificateSans(cr *api.PerconaServerMongoDB) []string {
 	}
 
 	sans = append(sans, getShardingSans(cr)...)
+	sans = append(sans, GetSplitHorizonsSans(cr)...)
 
 	return sans
 }
