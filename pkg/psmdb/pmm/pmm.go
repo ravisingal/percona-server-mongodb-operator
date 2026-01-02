@@ -273,6 +273,7 @@ func PMMAgentScript(cr *api.PerconaServerMongoDB) []corev1.EnvVar {
 
 	pmmServerArgs := "$(PMM_ADMIN_CUSTOM_PARAMS) --skip-connection-check --metrics-mode=push "
 	pmmServerArgs += " --username=$(DB_USER) --password=$(DB_PASSWORD) --cluster=$(CLUSTER_NAME) "
+	pmmServerArgs += " --agent-password=$(PMM_AGENT_SETUP_NODE_PASSWORD) --enable-all-collectors --max-collections-limit=0 --expose-exporter "
 	pmmServerArgs += "--service-name=$(PMM_AGENT_SETUP_NODE_NAME) --host=$(DB_HOST) --port=$(DB_PORT)"
 
 	if cr.TLSEnabled() {
@@ -310,7 +311,7 @@ func containerForPMM3(cr *api.PerconaServerMongoDB, secret *corev1.Secret, dbPor
 	spec := cr.Spec.PMM
 	ports := []corev1.ContainerPort{{ContainerPort: 7777}}
 
-	for i := 30100; i <= 30105; i++ {
+	for i := 30100; i <= 30102; i++ {
 		ports = append(ports, corev1.ContainerPort{ContainerPort: int32(i)})
 	}
 
@@ -423,7 +424,7 @@ func containerForPMM3(cr *api.PerconaServerMongoDB, secret *corev1.Secret, dbPor
 			},
 			{
 				Name:  "PMM_AGENT_PORTS_MAX",
-				Value: "30105",
+				Value: "30102",
 			},
 			{
 				Name:  "PMM_AGENT_CONFIG_FILE",
@@ -472,6 +473,21 @@ func containerForPMM3(cr *api.PerconaServerMongoDB, secret *corev1.Secret, dbPor
 			{
 				Name:  "PMM_AGENT_PATHS_TEMPDIR",
 				Value: "/tmp/pmm",
+			},
+			{
+				Name:  "PMM_AGENT_EXPOSE_EXPORTER",
+				Value: "1",
+			},
+			{
+				Name: "PMM_AGENT_SETUP_NODE_PASSWORD",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						Key: "MONGODB_CLUSTER_MONITOR_PASSWORD",
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: secret.Name,
+						},
+					},
+				},
 			},
 		},
 		Ports:           ports,
